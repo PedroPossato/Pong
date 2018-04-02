@@ -1,0 +1,248 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title> Pong </title>
+    <style type="text/css">
+        html, body {
+            width: 100%;
+            height: 100%;
+            min-width: 100%;
+            min-height: 100%;
+        }
+        body {
+            color: #2a324b;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #e1e5ee;
+        }
+        canvas {
+            border: 2px solid #c7ccdb;
+            background-color: #fbfcff;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <script type="text/javascript">
+
+            const canvas = document.getElementById("c");
+            const ctx = canvas.getContext("2d");
+            const W = 900;
+            const H = 600;
+            const FPS = 30;
+            const _DEBUG = false;
+
+            const sprites = new Image();
+            sprites.src = "./ball.png";
+            const playerImage = new Image();
+            playerImage.src = "./player.png";
+
+            let keys = {};
+
+            let ball = {
+                x: 2*W + 220,
+                y: 2*H + 25
+            };
+
+            let player1 = {
+                x: 50,
+                y: 1250,
+                score: 0
+            }
+
+            let player2 = {
+                x: 4450,
+                y: 1250,
+                score: 0
+            }
+
+            let dist;
+            let first = true;
+            let goal = false;
+            let count = 0;
+            let game = "game";
+            let deltax = 20+~~(Math.random()*5);
+            let deltay = 35 - deltax;
+            const speed = 2;
+            deltax *= speed;
+            deltay *= speed;
+            //if(_DEBUG) {
+              //  deltax = 4;
+              //  deltay = 4;
+            //}
+            if (Math.random() < 0.5) deltax *= -1;
+            if (Math.random() < 0.5) deltay *= -1;
+
+            function documentation() {
+
+                document.onkeydown = function keydown(e) {
+                    if(!e.isTrusted) return;
+                    keys[e.key] = true;
+                }
+
+                document.onkeyup = function keyup(e) {
+                    if(!e.isTrusted) return;
+                    keys[e.key] = false;
+                }
+
+            }
+
+            function sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            function init() {
+                documentation();
+                canvas.width = W;
+                canvas.height = H;
+                ctx.mozImageSmoothingEnabled = false;
+                ctx.webkitImageSmoothingEnabled = false;
+                ctx.msImageSmoothingEnabled = false;
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(sprites,ball.x,ball.y);
+                ctx.drawImage(playerImage,player1.x,player1.y);
+                ctx.drawImage(playerImage,player2.x,player2.y);
+
+                loop();
+            }
+
+            function goal_event() {
+                ball.x = 2*W + 220;
+                ball.y = 2*H + 25;
+                deltax = 20+~~(Math.random()*5);
+                deltay = 35 - deltax;
+                deltax *= speed;
+                deltay *= speed;
+                if (Math.random() < 0.5) deltax *= -1;
+                if (Math.random() < 0.5) deltay *= -1;
+                goal = true;
+                if(_DEBUG) {
+                  deltax = 4;
+                  deltay = 1;
+                }
+                }
+
+            function goal_message() {
+                if (goal) {
+                    ctx.fillText("GOAL!", 160, 140);
+                    count++;
+                    if (count > 42) {
+                        goal = false;
+                        count = 0;
+                    }
+                }
+            }
+
+            function update() {
+
+                if(!onscreenx()) {
+                    deltax *= -1;
+                    if(deltax < 50 && deltax > -50) deltax*=1.2;
+                  }
+                if(!onscreeny()) {
+                  deltay *= -1;
+                }
+                ball.x += deltax;
+                ball.y += deltay;
+
+                if(keys.w && player1.y > 0) {
+                    dist = player1.y < 40 ? player1.y : 40;
+                    player1.y -= dist;
+                }
+                else if(keys.s && player1.y < 2500) {
+                    dist = 2500 - player1.y < 40 ? 2500 - player1.y : 40;
+                    player1.y += dist;
+                }
+                if(keys["ArrowUp"] && player2.y > 0) {
+                    dist = player2.y < 40 ? player2.y : 40;
+                    player2.y -= dist;
+                }
+                else if(keys["ArrowDown"] && player2.y < 2500) {
+                    dist = 2500 - player2.y < 40 ? 2500 - player2.y : 40;
+                    player2.y += dist;
+                }
+              }
+
+            function draw() {
+
+                ctx.fillStyle = "#111";
+                ctx.scale(0.2,0.2);
+                if(!is_game_over()) ctx.drawImage(sprites,ball.x,ball.y,240,240);
+                ctx.drawImage(playerImage,player1.x,player1.y);
+                ctx.drawImage(playerImage,player2.x,player2.y);
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.scale(2.5,2.5);
+                ctx.fillText("Placar: " + player1.score + " x " + player2.score, 148, 30);
+                if(_DEBUG) {
+                    ctx.fillText("player1.y -> "+player1.y, 100, 50);
+                    ctx.fillText("player2.y -> "+player2.y, 100, 100);
+                    ctx.fillText("ball.x -> "+ball.x, 100, 150);
+                    ctx.fillText("ball.y -> "+ball.y, 100, 200);
+                }
+                goal_message();
+                ctx.scale(0.4,0.4);
+            }
+
+            function onscreenx() {
+
+                if (((ball.x <= player1.x || ball.x < player1.x+50) && ball.y > player1.y-200 && ball.y < player1.y+500) || ball.x <= 0)
+                    return false;
+                if ((ball.x+240 >= player2.x && ball.y > player2.y-200 && ball.y < player2.y+500) || ball.x >= 4*W+666)
+                    return false;
+                return true;
+            }
+
+            function onscreeny() {
+                if (ball.y > 0 && ball.y < 4*H+360)
+                    return true;
+                return false;
+            }
+
+            function check_score() {
+                if (ball.x > 4*W+666) {
+                    player1.score++;
+                    first = true;
+                    goal_event();
+                    }
+                if (ball.x < player1.x) {
+                    player2.score++;
+                    first = true;
+                    goal_event();
+                    }
+            }
+
+            function is_game_over() {
+                if (player1.score > 4 || player2.score > 4)
+                    return true;
+                return false;
+            }
+
+            async function loop() {
+                ctx.fillStyle = "#E2CFEA";
+                ctx.fillRect(0, 0, W, H);
+                check_score();
+                update();
+                draw();
+                if (first) { await sleep(1000); first = false; }
+                is_game_over();
+                if (!is_game_over())
+                    requestAnimationFrame(loop);
+                else {
+                  ctx.scale(3,3);
+                    let winner = player1.score > player2.score ? "1 wins!" : "2 wins!";
+                    ctx.fillText("Player " + winner ,115,100);
+                    }
+              }
+
+
+            init();
+
+
+    </script>
+</body>
+</html>
